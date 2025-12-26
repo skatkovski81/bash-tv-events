@@ -17,22 +17,64 @@
     margin: 0 auto;
     padding: 40px 16px 60px;
     color: #fff;
+    box-sizing: border-box;
+  }
+
+  .tko-schedule-title-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 14px;
+    margin-bottom: 18px;
   }
 
   .tko-schedule-title {
     font-size: 28px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    margin-bottom: 20px;
+    margin: 0;
     border-left: 4px solid #fff;
     padding-left: 12px;
   }
 
-  .tko-schedule-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
+  /* NAV BUTTONS */
+  .events-nav{
+    display:flex;
+    gap:10px;
+    flex-shrink: 0;
   }
+  .events-btn{
+    width:42px;
+    height:42px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.35);
+    color:#fff;
+    font-size:22px;
+    cursor:pointer;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    user-select:none;
+  }
+  .events-btn:hover{ opacity:0.9; }
+  .events-btn:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  /* SLIDER TRACK (replaces grid) */
+  .tko-schedule-list {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+
+  /* Scrollbar styling (subtle) */
+  .tko-schedule-list::-webkit-scrollbar { height: 8px; }
+  .tko-schedule-list::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(255,255,255,0.15); }
+  .tko-schedule-list::-webkit-scrollbar-track { background: transparent; }
 
   .tko-schedule-card {
     background: #050509;
@@ -42,6 +84,10 @@
     display: flex;
     flex-direction: column;
     transition: transform .2s ease, box-shadow .2s ease;
+    scroll-snap-align: start;
+
+    /* ✅ 2 cards visible at a time on desktop */
+    flex: 0 0 calc((100% - 20px) / 2);
   }
 
   .tko-schedule-card:hover {
@@ -61,6 +107,7 @@
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
+    display: block;
   }
 
   .tko-schedule-card-header {
@@ -91,6 +138,7 @@
     border-top: 1px solid rgba(255,255,255,0.08);
     display: flex;
     align-items: center;
+    gap: 10px;
   }
 
   .tko-schedule-tag {
@@ -99,6 +147,7 @@
     border-radius: 999px;
     border: 1px solid rgba(255,45,85,.6);
     padding: 4px 10px;
+    white-space: nowrap;
   }
 
   .tko-schedule-watch-btn {
@@ -110,6 +159,10 @@
     background: #370000;
     color: #fff;
     text-decoration: none;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .tko-empty {
@@ -129,19 +182,41 @@
     background: rgba(55,0,0,.85);
     margin-bottom: 14px;
   }
+
+  /* ✅ Mobile: show 1 card at a time (swipe) */
+  @media (max-width: 900px) {
+    .tko-schedule-card {
+      flex: 0 0 86%;
+    }
+    .tko-schedule-title {
+      font-size: 22px;
+    }
+    .events-btn{
+      width:38px;
+      height:38px;
+    }
+  }
 </style>
 </head>
 
 <body>
-<div class="tko-schedule-wrapper">
-  <h2 class="tko-schedule-title">Upcoming Events</h2>
-  <div class="tko-schedule-list" id="events"></div>
+  <div class="tko-schedule-wrapper">
+    <div class="tko-schedule-title-row">
+      <h2 class="tko-schedule-title">Upcoming Events</h2>
 
-  <div class="tko-empty" id="empty" style="display:none;">
-    <div class="tko-badge">Coming Soon</div>
-    <div>Upcoming events coming soon.</div>
+      <div class="events-nav">
+        <button class="events-btn" id="eventsPrev" aria-label="Previous">‹</button>
+        <button class="events-btn" id="eventsNext" aria-label="Next">›</button>
+      </div>
+    </div>
+
+    <div class="tko-schedule-list" id="events"></div>
+
+    <div class="tko-empty" id="empty" style="display:none;">
+      <div class="tko-badge">Coming Soon</div>
+      <div>Upcoming events coming soon.</div>
+    </div>
   </div>
-</div>
 
 <script>
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq-sQ4bWk9Xo6-l39RnWoU1WYT8KECFnkNJXrMUbCia_fL6pKTNevOyk8l-7e0QXZ5vjwIVtxw7I4p/pub?gid=0&single=true&output=csv";
@@ -168,13 +243,11 @@ function parseCSV(text){
     cur += ch;
   }
   row.push(cur); rows.push(row);
-
   return rows.filter(r => r.some(c => String(c||"").trim() !== ""));
 }
 
 function cleanCell(v){
   let s = String(v ?? "").trim();
-  // remove wrapping quotes if any
   if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1).trim();
   return s;
 }
@@ -190,6 +263,38 @@ function escapeHtml(s){
     .replaceAll("'","&#039;");
 }
 
+function setupArrows(){
+  const track = document.getElementById("events");
+  const prev = document.getElementById("eventsPrev");
+  const next = document.getElementById("eventsNext");
+  if (!track || !prev || !next) return;
+
+  function cardScrollAmount(){
+    const first = track.querySelector(".tko-schedule-card");
+    const gap = 20;
+    const w = first ? first.getBoundingClientRect().width : 420;
+    return w + gap;
+  }
+
+  prev.addEventListener("click", () => {
+    track.scrollBy({ left: -cardScrollAmount(), behavior: "smooth" });
+  });
+
+  next.addEventListener("click", () => {
+    track.scrollBy({ left: cardScrollAmount(), behavior: "smooth" });
+  });
+
+  // Optional: disable buttons at ends (best effort)
+  function refreshDisabled(){
+    const maxScrollLeft = track.scrollWidth - track.clientWidth - 2;
+    prev.disabled = track.scrollLeft <= 2;
+    next.disabled = track.scrollLeft >= maxScrollLeft;
+  }
+  track.addEventListener("scroll", () => window.requestAnimationFrame(refreshDisabled));
+  window.addEventListener("resize", refreshDisabled);
+  refreshDisabled();
+}
+
 fetch(CSV_URL + "&cb=" + Date.now(), { cache: "no-store" })
   .then(res => res.text())
   .then(csv => {
@@ -203,7 +308,6 @@ fetch(CSV_URL + "&cb=" + Date.now(), { cache: "no-store" })
       return obj;
     });
 
-    // expected columns: show, date, time, location, tag, image, button_url, button_text, status
     const events = items
       .filter(e => (e.status || "").toLowerCase() !== "hide")
       .filter(e => (e.show || "").trim() !== "");
@@ -249,6 +353,8 @@ fetch(CSV_URL + "&cb=" + Date.now(), { cache: "no-store" })
         </div>
       `;
     }).join("");
+
+    setupArrows();
   })
   .catch(() => {
     const emptyEl  = document.getElementById("empty");
