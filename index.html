@@ -146,40 +146,113 @@
 <script>
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq-sQ4bWk9Xo6-l39RnWoU1WYT8KECFnkNJXrMUbCia_fL6pKTNevOyk8l-7e0QXZ5vjwIVtxw7I4p/pub?gid=0&single=true&output=csv";
 
-fetch(CSV_URL + "&cb=" + Date.now())
+function parseCSV(text){
+  const rows = [];
+  let row = [], cur = "", inQuotes = false;
+
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    const next = text[i+1];
+
+    if (ch === '"'){
+      if (inQuotes && next === '"'){ cur += '"'; i++; }
+      else inQuotes = !inQuotes;
+      continue;
+    }
+    if (!inQuotes && ch === ","){ row.push(cur); cur = ""; continue; }
+    if (!inQuotes && (ch === "\n" || ch === "\r")){
+      if (ch === "\r" && next === "\n") i++;
+      row.push(cur); rows.push(row);
+      row = []; cur = ""; continue;
+    }
+    cur += ch;
+  }
+  row.push(cur); rows.push(row);
+
+  return rows.filter(r => r.some(c => String(c||"").trim() !== ""));
+}
+
+function cleanCell(v){
+  let s = String(v ?? "").trim();
+  // remove wrapping quotes if any
+  if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1, -1).trim();
+  return s;
+}
+
+function normalizeKey(k){
+  return cleanCell(k).toLowerCase().replace(/\s+/g,"_");
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;")
+    .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+fetch(CSV_URL + "&cb=" + Date.now(), { cache: "no-store" })
   .then(res => res.text())
-  .then(text => {
-    const rows = text.trim().split("\n").map(r => r.split(","));
-    if (rows.length < 2) throw "empty";
+  .then(csv => {
+    const rows = parseCSV(csv);
+    if (rows.length < 2) throw new Error("No rows");
 
-    const headers = rows[0].map(h => h.toLowerCase().trim());
-    const events = rows.slice(1).map(r => {
+    const headers = rows[0].map(normalizeKey);
+    const items = rows.slice(1).map(r => {
       const obj = {};
-      headers.forEach((h,i)=>obj[h]=r[i]);
+      headers.forEach((h, i) => obj[h] = cleanCell(r[i]));
       return obj;
-    }).filter(e => e.show);
+    });
 
-    if (!events.length) throw "empty";
+    // expected columns: show, date, time, location, tag, image, button_url, button_text, status
+    const events = items
+      .filter(e => (e.status || "").toLowerCase() !== "hide")
+      .filter(e => (e.show || "").trim() !== "");
 
-    document.getElementById("events").innerHTML = events.map(e => `
-      <div class="tko-schedule-card">
-        <div class="tko-schedule-thumb-wrap">
-          <img class="tko-schedule-thumb" src="${e.image}" />
+    const eventsEl = document.getElementById("events");
+    const emptyEl  = document.getElementById("empty");
+
+    if (!events.length){
+      emptyEl.style.display = "block";
+      eventsEl.innerHTML = "";
+      return;
+    }
+
+    emptyEl.style.display = "none";
+
+    eventsEl.innerHTML = events.map(e => {
+      const img = (e.image || "").trim();
+      const imgHtml = img
+        ? `<img class="tko-schedule-thumb" src="${escapeHtml(img)}" alt="${escapeHtml(e.show)}" referrerpolicy="no-referrer">`
+        : `<div style="color:#b7b7c2;font-size:12px;letter-spacing:.12em;text-transform:uppercase;">No Image</div>`;
+
+      const link = (e.button_url || "").trim();
+      const btnText = (e.button_text || "Watch").trim();
+
+      const btnHtml = link
+        ? `<a class="tko-schedule-watch-btn" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(btnText)}</a>`
+        : `<span class="tko-schedule-watch-btn" style="opacity:.55;cursor:not-allowed;">${escapeHtml(btnText)}</span>`;
+
+      const dt = [e.date, e.time].filter(Boolean).join(" • ");
+
+      return `
+        <div class="tko-schedule-card">
+          <div class="tko-schedule-thumb-wrap">${imgHtml}</div>
+          <div class="tko-schedule-card-header">
+            <div class="tko-schedule-event-name">${escapeHtml(e.show)}</div>
+            ${dt ? `<div class="tko-schedule-date-time">${escapeHtml(dt)}</div>` : ``}
+            ${e.location ? `<div class="tko-schedule-location">${escapeHtml(e.location)}</div>` : ``}
+          </div>
+          <div class="tko-schedule-footer">
+            <div class="tko-schedule-tag">${escapeHtml(e.tag || "PPV")}</div>
+            ${btnHtml}
+          </div>
         </div>
-        <div class="tko-schedule-card-header">
-          <div class="tko-schedule-event-name">${e.show}</div>
-          <div class="tko-schedule-date-time">${e.date} • ${e.time}</div>
-          <div class="tko-schedule-location">${e.location}</div>
-        </div>
-        <div class="tko-schedule-footer">
-          <div class="tko-schedule-tag">${e.tag || "PPV"}</div>
-          <a class="tko-schedule-watch-btn" href="${e.button_url}" target="_blank">Watch</a>
-        </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
   })
   .catch(() => {
-    document.getElementById("empty").style.display = "block";
+    const emptyEl  = document.getElementById("empty");
+    if (emptyEl) emptyEl.style.display = "block";
   });
 </script>
 </body>
