@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BASH TV – Upcoming Events</title>
+
+<style>
+  body {
+    margin: 0;
+    background: transparent;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .tko-schedule-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 16px 60px;
+    color: #fff;
+  }
+
+  .tko-schedule-title {
+    font-size: 28px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    border-left: 4px solid #fff;
+    padding-left: 12px;
+  }
+
+  .tko-schedule-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  .tko-schedule-card {
+    background: #050509;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+
+  .tko-schedule-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 30px rgba(0,0,0,.7);
+  }
+
+  .tko-schedule-thumb-wrap {
+    height: 220px;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tko-schedule-thumb {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .tko-schedule-card-header {
+    padding: 14px 16px 8px;
+  }
+
+  .tko-schedule-event-name {
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .tko-schedule-date-time {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #b7b7c2;
+  }
+
+  .tko-schedule-location {
+    font-size: 12px;
+    color: #b7b7c2;
+  }
+
+  .tko-schedule-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+  }
+
+  .tko-schedule-tag {
+    font-size: 11px;
+    letter-spacing: .14em;
+    border-radius: 999px;
+    border: 1px solid rgba(255,45,85,.6);
+    padding: 4px 10px;
+  }
+
+  .tko-schedule-watch-btn {
+    margin-left: auto;
+    padding: 8px 16px;
+    font-size: 11px;
+    letter-spacing: .16em;
+    border-radius: 999px;
+    background: #370000;
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .tko-empty {
+    margin-top: 40px;
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .tko-badge {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: .18em;
+    background: rgba(55,0,0,.85);
+    margin-bottom: 14px;
+  }
+</style>
+</head>
+
+<body>
+<div class="tko-schedule-wrapper">
+  <h2 class="tko-schedule-title">Upcoming Events</h2>
+  <div class="tko-schedule-list" id="events"></div>
+
+  <div class="tko-empty" id="empty" style="display:none;">
+    <div class="tko-badge">Coming Soon</div>
+    <div>Upcoming events coming soon.</div>
+  </div>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRq-sQ4bWk9Xo6-l39RnWoU1WYT8KECFnkNJXrMUbCia_fL6pKTNevOyk8l-7e0QXZ5vjwIVtxw7I4p/pub?gid=0&single=true&output=csv";
+
+fetch(CSV_URL + "&cb=" + Date.now())
+  .then(res => res.text())
+  .then(text => {
+    const rows = text.trim().split("\n").map(r => r.split(","));
+    if (rows.length < 2) throw "empty";
+
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    const events = rows.slice(1).map(r => {
+      const obj = {};
+      headers.forEach((h,i)=>obj[h]=r[i]);
+      return obj;
+    }).filter(e => e.show);
+
+    if (!events.length) throw "empty";
+
+    document.getElementById("events").innerHTML = events.map(e => `
+      <div class="tko-schedule-card">
+        <div class="tko-schedule-thumb-wrap">
+          <img class="tko-schedule-thumb" src="${e.image}" />
+        </div>
+        <div class="tko-schedule-card-header">
+          <div class="tko-schedule-event-name">${e.show}</div>
+          <div class="tko-schedule-date-time">${e.date} • ${e.time}</div>
+          <div class="tko-schedule-location">${e.location}</div>
+        </div>
+        <div class="tko-schedule-footer">
+          <div class="tko-schedule-tag">${e.tag || "PPV"}</div>
+          <a class="tko-schedule-watch-btn" href="${e.button_url}" target="_blank">Watch</a>
+        </div>
+      </div>
+    `).join("");
+  })
+  .catch(() => {
+    document.getElementById("empty").style.display = "block";
+  });
+</script>
+</body>
+</html>
