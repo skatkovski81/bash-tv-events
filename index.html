@@ -332,7 +332,7 @@ fetch(CSV_URL + "&cb=" + Date.now(), { cache: "no-store" })
       const link = (e.button_url || "").trim();
       const btnText = (e.button_text || "Watch").trim();
 
-      const btnHtml = link  
+      const btnHtml = link
         ? `<a class="tko-schedule-watch-btn" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(btnText)}</a>`
         : `<span class="tko-schedule-watch-btn" style="opacity:.55;cursor:not-allowed;">${escapeHtml(btnText)}</span>`;
 
