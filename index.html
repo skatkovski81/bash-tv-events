@@ -6,194 +6,167 @@
 <title>BASH TV – Upcoming Events</title>
 
 <style>
-  body {
-    margin: 0;
-    background: transparent;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  body{
+    margin:0;
+    background:transparent;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   }
 
-  .tko-schedule-wrapper {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 16px 60px;
-    color: #fff;
-    box-sizing: border-box;
+  .tko-schedule-wrapper{
+    max-width:1200px;
+    margin:0 auto;
+    padding:40px 16px 60px;
+    color:#fff;
+    box-sizing:border-box;
   }
 
   .tko-schedule-title-row{
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap: 14px;
-    margin-bottom: 18px;
+    gap:14px;
+    margin-bottom:18px;
   }
 
-  .tko-schedule-title {
-    font-size: 28px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin: 0;
-    border-left: 4px solid #fff;
-    padding-left: 12px;
+  .tko-schedule-title{
+    font-size:28px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin:0;
+    border-left:4px solid #fff;
+    padding-left:12px;
   }
 
   /* NAV BUTTONS */
-  .events-nav{
-    display:flex;
-    gap:10px;
-    flex-shrink: 0;
-  }
+  .events-nav{ display:flex; gap:10px; flex-shrink:0; }
   .events-btn{
-    width:42px;
-    height:42px;
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,0.12);
-    background: rgba(0,0,0,0.35);
-    color:#fff;
-    font-size:22px;
-    cursor:pointer;
-    line-height:1;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+    width:42px;height:42px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.35);
+    color:#fff;font-size:22px;cursor:pointer;line-height:1;
+    display:flex;align-items:center;justify-content:center;
     user-select:none;
   }
-  .events-btn:hover{ opacity:0.9; }
-  .events-btn:disabled{ opacity:0.35; cursor:not-allowed; }
+  .events-btn:hover{ opacity:.9; }
+  .events-btn:disabled{ opacity:.35; cursor:not-allowed; }
 
-  /* SLIDER TRACK (replaces grid) */
-  .tko-schedule-list {
-    display: flex;
-    gap: 20px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 8px;
+  /* ✅ SLIDER TRACK (hard no-wrap + horizontal scroll) */
+  .tko-schedule-list{
+    display:flex;
+    flex-wrap: nowrap;              /* ✅ KEY FIX: never wrap to next line */
+    gap:20px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:10px;
   }
 
-  /* Scrollbar styling (subtle) */
-  .tko-schedule-list::-webkit-scrollbar { height: 8px; }
-  .tko-schedule-list::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(255,255,255,0.15); }
-  .tko-schedule-list::-webkit-scrollbar-track { background: transparent; }
+  /* Subtle scrollbar */
+  .tko-schedule-list::-webkit-scrollbar{ height:8px; }
+  .tko-schedule-list::-webkit-scrollbar-thumb{ border-radius:999px;background:rgba(255,255,255,.15); }
+  .tko-schedule-list::-webkit-scrollbar-track{ background:transparent; }
 
-  .tko-schedule-card {
-    background: #050509;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.08);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    transition: transform .2s ease, box-shadow .2s ease;
-    scroll-snap-align: start;
+  .tko-schedule-card{
+    background:#050509;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.08);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    transition:transform .2s ease, box-shadow .2s ease;
+    scroll-snap-align:start;
 
-    /* ✅ 2 cards visible at a time on desktop */
+    /* ✅ 2 visible at a time on desktop */
     flex: 0 0 calc((100% - 20px) / 2);
+
+    /* ✅ prevents 3 cards from squeezing into view on some widths */
+    min-width: 420px;
   }
 
-  .tko-schedule-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 14px 30px rgba(0,0,0,.7);
+  .tko-schedule-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 14px 30px rgba(0,0,0,.7);
   }
 
-  .tko-schedule-thumb-wrap {
-    height: 220px;
-    background: #111;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .tko-schedule-thumb-wrap{
+    height:220px;
+    background:#111;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .tko-schedule-thumb{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    display:block;
   }
 
-  .tko-schedule-thumb {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    display: block;
+  .tko-schedule-card-header{ padding:14px 16px 8px; }
+  .tko-schedule-event-name{
+    font-size:16px;
+    font-weight:600;
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .tko-schedule-date-time{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:#b7b7c2;
+  }
+  .tko-schedule-location{ font-size:12px;color:#b7b7c2; }
+
+  .tko-schedule-footer{
+    padding:10px 16px 14px;
+    border-top:1px solid rgba(255,255,255,.08);
+    display:flex;align-items:center;gap:10px;
+  }
+  .tko-schedule-tag{
+    font-size:11px;
+    letter-spacing:.14em;
+    border-radius:999px;
+    border:1px solid rgba(255,45,85,.6);
+    padding:4px 10px;
+    white-space:nowrap;
+  }
+  .tko-schedule-watch-btn{
+    margin-left:auto;
+    padding:8px 16px;
+    font-size:11px;
+    letter-spacing:.16em;
+    border-radius:999px;
+    background:#370000;
+    color:#fff;
+    text-decoration:none;
+    white-space:nowrap;
+    display:inline-flex;align-items:center;justify-content:center;
   }
 
-  .tko-schedule-card-header {
-    padding: 14px 16px 8px;
+  .tko-empty{
+    margin-top:40px;
+    border:1px dashed rgba(255,255,255,.2);
+    border-radius:16px;
+    padding:40px;
+    text-align:center;
+  }
+  .tko-badge{
+    display:inline-block;
+    padding:6px 18px;
+    border-radius:999px;
+    font-size:11px;
+    letter-spacing:.18em;
+    background:rgba(55,0,0,.85);
+    margin-bottom:14px;
   }
 
-  .tko-schedule-event-name {
-    font-size: 16px;
-    font-weight: 600;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
+  /* ✅ Mobile: show 1 card at a time */
+  @media (max-width: 900px){
+    .tko-schedule-title{ font-size:22px; }
+    .events-btn{ width:38px;height:38px; }
 
-  .tko-schedule-date-time {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    color: #b7b7c2;
-  }
-
-  .tko-schedule-location {
-    font-size: 12px;
-    color: #b7b7c2;
-  }
-
-  .tko-schedule-footer {
-    padding: 10px 16px 14px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .tko-schedule-tag {
-    font-size: 11px;
-    letter-spacing: .14em;
-    border-radius: 999px;
-    border: 1px solid rgba(255,45,85,.6);
-    padding: 4px 10px;
-    white-space: nowrap;
-  }
-
-  .tko-schedule-watch-btn {
-    margin-left: auto;
-    padding: 8px 16px;
-    font-size: 11px;
-    letter-spacing: .16em;
-    border-radius: 999px;
-    background: #370000;
-    color: #fff;
-    text-decoration: none;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .tko-empty {
-    margin-top: 40px;
-    border: 1px dashed rgba(255,255,255,0.2);
-    border-radius: 16px;
-    padding: 40px;
-    text-align: center;
-  }
-
-  .tko-badge {
-    display: inline-block;
-    padding: 6px 18px;
-    border-radius: 999px;
-    font-size: 11px;
-    letter-spacing: .18em;
-    background: rgba(55,0,0,.85);
-    margin-bottom: 14px;
-  }
-
-  /* ✅ Mobile: show 1 card at a time (swipe) */
-  @media (max-width: 900px) {
-    .tko-schedule-card {
+    .tko-schedule-card{
       flex: 0 0 86%;
-    }
-    .tko-schedule-title {
-      font-size: 22px;
-    }
-    .events-btn{
-      width:38px;
-      height:38px;
+      min-width: 0; /* let 86% control it on mobile */
     }
   }
 </style>
@@ -204,7 +177,7 @@
     <div class="tko-schedule-title-row">
       <h2 class="tko-schedule-title">Upcoming Events</h2>
 
-      <div class="events-nav">
+      <div class="events-nav" id="eventsNav">
         <button class="events-btn" id="eventsPrev" aria-label="Previous">‹</button>
         <button class="events-btn" id="eventsNext" aria-label="Next">›</button>
       </div>
@@ -265,34 +238,36 @@ function escapeHtml(s){
 
 function setupArrows(){
   const track = document.getElementById("events");
+  const nav = document.getElementById("eventsNav");
   const prev = document.getElementById("eventsPrev");
   const next = document.getElementById("eventsNext");
-  if (!track || !prev || !next) return;
+  if (!track || !prev || !next || !nav) return;
 
-  function cardScrollAmount(){
+  const cards = () => track.querySelectorAll(".tko-schedule-card");
+  const gap = 20;
+
+  function scrollByOne(dir){
     const first = track.querySelector(".tko-schedule-card");
-    const gap = 20;
     const w = first ? first.getBoundingClientRect().width : 420;
-    return w + gap;
+    track.scrollBy({ left: dir * (w + gap), behavior:"smooth" });
   }
 
-  prev.addEventListener("click", () => {
-    track.scrollBy({ left: -cardScrollAmount(), behavior: "smooth" });
-  });
+  prev.addEventListener("click", () => scrollByOne(-1));
+  next.addEventListener("click", () => scrollByOne(1));
 
-  next.addEventListener("click", () => {
-    track.scrollBy({ left: cardScrollAmount(), behavior: "smooth" });
-  });
+  function refresh(){
+    // Hide arrows if <= 2 cards (desktop requirement)
+    const count = cards().length;
+    nav.style.display = (count > 2) ? "flex" : "none";
 
-  // Optional: disable buttons at ends (best effort)
-  function refreshDisabled(){
     const maxScrollLeft = track.scrollWidth - track.clientWidth - 2;
     prev.disabled = track.scrollLeft <= 2;
     next.disabled = track.scrollLeft >= maxScrollLeft;
   }
-  track.addEventListener("scroll", () => window.requestAnimationFrame(refreshDisabled));
-  window.addEventListener("resize", refreshDisabled);
-  refreshDisabled();
+
+  track.addEventListener("scroll", () => requestAnimationFrame(refresh));
+  window.addEventListener("resize", refresh);
+  refresh();
 }
 
 fetch(CSV_URL + "&cb=" + Date.now(), { cache: "no-store" })
@@ -361,5 +336,6 @@ fetch(CSV_URL + "&cb=" + Date.now(), { cache: "no-store" })
     if (emptyEl) emptyEl.style.display = "block";
   });
 </script>
+
 </body>
 </html>
